@@ -24,6 +24,7 @@ const (
 	feeManagerKey
 	rewardManagerKey
 	// ADD YOUR PRECOMPILE HERE
+	multicallKey
 	// {yourPrecompile}Key
 )
 
@@ -41,6 +42,8 @@ func (k precompileKey) String() string {
 	case rewardManagerKey:
 		return "rewardManager"
 		// ADD YOUR PRECOMPILE HERE
+	case multicallKey:
+		return "multicall"
 		/*
 			case {yourPrecompile}Key:
 				return "{yourPrecompile}"
@@ -50,7 +53,7 @@ func (k precompileKey) String() string {
 }
 
 // ADD YOUR PRECOMPILE HERE
-var precompileKeys = []precompileKey{contractDeployerAllowListKey, contractNativeMinterKey, txAllowListKey, feeManagerKey, rewardManagerKey /* {yourPrecompile}Key */}
+var precompileKeys = []precompileKey{contractDeployerAllowListKey, contractNativeMinterKey, txAllowListKey, feeManagerKey, rewardManagerKey, multicallKey /* {yourPrecompile}Key */}
 
 // PrecompileUpgrade is a helper struct embedded in UpgradeConfig, representing
 // each of the possible stateful precompile types that can be activated
@@ -62,6 +65,7 @@ type PrecompileUpgrade struct {
 	FeeManagerConfig                *precompile.FeeConfigManagerConfig          `json:"feeManagerConfig,omitempty"`                // Config for the fee manager precompile
 	RewardManagerConfig             *precompile.RewardManagerConfig             `json:"rewardManagerConfig,omitempty"`             // Config for the reward manager precompile
 	// ADD YOUR PRECOMPILE HERE
+	MulticallConfig *precompile.MulticallConfig `json:"multicallConfig,omitempty"`
 	// {YourPrecompile}Config  *precompile.{YourPrecompile}Config `json:"{yourPrecompile}Config,omitempty"`
 }
 
@@ -78,6 +82,8 @@ func (p *PrecompileUpgrade) getByKey(key precompileKey) (precompile.StatefulPrec
 	case rewardManagerKey:
 		return p.RewardManagerConfig, p.RewardManagerConfig != nil
 	// ADD YOUR PRECOMPILE HERE
+	case multicallKey:
+		return p.MulticallConfig, p.MulticallConfig != nil
 	/*
 		case {yourPrecompile}Key:
 		return p.{YourPrecompile}Config , p.{YourPrecompile}Config  != nil
@@ -88,11 +94,11 @@ func (p *PrecompileUpgrade) getByKey(key precompileKey) (precompile.StatefulPrec
 }
 
 // verifyPrecompileUpgrades checks [c.PrecompileUpgrades] is well formed:
-// - [upgrades] must specify exactly one key per PrecompileUpgrade
-// - the specified blockTimestamps must monotonically increase
-// - the specified blockTimestamps must be compatible with those
-//   specified in the chainConfig by genesis.
-// - check a precompile is disabled before it is re-enabled
+//   - [upgrades] must specify exactly one key per PrecompileUpgrade
+//   - the specified blockTimestamps must monotonically increase
+//   - the specified blockTimestamps must be compatible with those
+//     specified in the chainConfig by genesis.
+//   - check a precompile is disabled before it is re-enabled
 func (c *ChainConfig) verifyPrecompileUpgrades() error {
 	var lastBlockTimestamp *big.Int
 	for i, upgrade := range c.PrecompileUpgrades {
@@ -243,14 +249,22 @@ func (c *ChainConfig) GetRewardManagerConfig(blockTimestamp *big.Int) *precompil
 	return nil
 }
 
-/* ADD YOUR PRECOMPILE HERE
-func (c *ChainConfig) Get{YourPrecompile}Config(blockTimestamp *big.Int) *precompile.{YourPrecompile}Config {
-	if val := c.getActivePrecompileConfig(blockTimestamp, {yourPrecompile}Key, c.PrecompileUpgrades); val != nil {
-		return val.(*precompile.{YourPrecompile}Config)
+/*
+ADD YOUR PRECOMPILE HERE
+
+	func (c *ChainConfig) Get{YourPrecompile}Config(blockTimestamp *big.Int) *precompile.{YourPrecompile}Config {
+		if val := c.getActivePrecompileConfig(blockTimestamp, {yourPrecompile}Key, c.PrecompileUpgrades); val != nil {
+			return val.(*precompile.{YourPrecompile}Config)
+		}
+		return nil
+	}
+*/
+func (c *ChainConfig) GetMulticallConfig(blockTimestamp *big.Int) *precompile.MulticallConfig {
+	if val := c.getActivePrecompileConfig(blockTimestamp, multicallKey, c.PrecompileUpgrades); val != nil {
+		return val.(*precompile.MulticallConfig)
 	}
 	return nil
 }
-*/
 
 func (c *ChainConfig) GetActivePrecompiles(blockTimestamp *big.Int) PrecompileUpgrade {
 	pu := PrecompileUpgrade{}
@@ -273,6 +287,9 @@ func (c *ChainConfig) GetActivePrecompiles(blockTimestamp *big.Int) PrecompileUp
 	// if config := c.{YourPrecompile}Config(blockTimestamp); config != nil && !config.Disable {
 	// 	pu.{YourPrecompile}Config = config
 	// }
+	if config := c.GetMulticallConfig(blockTimestamp); config != nil && !config.Disable {
+		pu.MulticallConfig = config
+	}
 
 	return pu
 }

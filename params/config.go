@@ -305,6 +305,11 @@ func (c *ChainConfig) IsRewardManager(blockTimestamp *big.Int) bool {
 }
 
 // ADD YOUR PRECOMPILE HERE
+func (c *ChainConfig) IsMulticall(blockTimestamp *big.Int) bool {
+	config := c.GetMulticallConfig(blockTimestamp)
+	return config != nil && !config.Disable
+}
+
 /*
 func (c *ChainConfig) Is{YourPrecompile}(blockTimestamp *big.Int) bool {
 	config := c.Get{YourPrecompile}Config(blockTimestamp)
@@ -546,6 +551,7 @@ type Rules struct {
 	IsFeeConfigManagerEnabled          bool
 	IsRewardManagerEnabled             bool
 	// ADD YOUR PRECOMPILE HERE
+	IsMulticallEnabled bool
 	// Is{YourPrecompile}Enabled         bool
 
 	// Precompiles maps addresses to stateful precompiled contracts that are enabled
@@ -586,6 +592,7 @@ func (c *ChainConfig) AvalancheRules(blockNum, blockTimestamp *big.Int) Rules {
 	rules.IsFeeConfigManagerEnabled = c.IsFeeConfigManager(blockTimestamp)
 	rules.IsRewardManagerEnabled = c.IsRewardManager(blockTimestamp)
 	// ADD YOUR PRECOMPILE HERE
+	rules.IsMulticallEnabled = c.IsMulticall(blockTimestamp)
 	// rules.Is{YourPrecompile}Enabled = c.{IsYourPrecompile}(blockTimestamp)
 
 	// Initialize the stateful precompiles that should be enabled at [blockTimestamp].
