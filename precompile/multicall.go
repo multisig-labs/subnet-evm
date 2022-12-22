@@ -26,14 +26,17 @@ Typically, custom codes are required in only those areas.
 package precompile
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 	"strings"
 
+	ethclient2 "github.com/ava-labs/coreth/ethclient"
 	"github.com/ava-labs/subnet-evm/accounts/abi"
 	"github.com/ava-labs/subnet-evm/vmerrs"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 const (
@@ -175,6 +178,7 @@ func PackAggregateOutput(outputStruct AggregateOutput) ([]byte, error) {
 	)
 }
 
+// Multicall 0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00
 func aggregate(accessibleState PrecompileAccessibleState, caller common.Address, addr common.Address, input []byte, suppliedGas uint64, readOnly bool) (ret []byte, remainingGas uint64, err error) {
 	if remainingGas, err = deductGas(suppliedGas, AggregateGasCost); err != nil {
 		return nil, 0, err
@@ -191,15 +195,26 @@ func aggregate(accessibleState PrecompileAccessibleState, caller common.Address,
 	}
 
 	// CUSTOM CODE STARTS HERE
-	_ = inputStruct            // CUSTOM CODE OPERATES ON INPUT
-	var output AggregateOutput // CUSTOM CODE FOR AN OUTPUT
-	packedOutput, err := PackAggregateOutput(output)
-	if err != nil {
-		return nil, remainingGas, err
-	}
+	_ = inputStruct // CUSTOM CODE OPERATES ON INPUT
+
+	// // TODO how to get the URL port? Config?
+	// url := "http://127.0.0.1:9650/ext/bc/C/rpc"
+	// client, err := ethclient2.Dial(url)
+	// if err != nil {
+	// 	return nil, remainingGas, err
+	// }
+	// cm := interfaces.CallMsg{To: common.HexToAddress("0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00"), Data: input}
+	// b, err := client.CallContract(context.Background(), cm, nil)
+
+	// var output AggregateOutput // CUSTOM CODE FOR AN OUTPUT
+	// packedOutput, err := PackAggregateOutput(output)
+	// if err != nil {
+	// 	return nil, remainingGas, err
+	// }
 
 	// Return the packed output and the remaining gas
-	return packedOutput, remainingGas, nil
+	// return packedOutput, remainingGas, nil
+	return input, remainingGas, nil
 }
 
 // UnpackGetBalanceInput attempts to unpack [input] into the common.Address type argument
@@ -239,10 +254,20 @@ func getBalance(accessibleState PrecompileAccessibleState, caller common.Address
 	}
 
 	// CUSTOM CODE STARTS HERE
-	_ = inputStruct // CUSTOM CODE OPERATES ON INPUT
 
-	var output *big.Int // CUSTOM CODE FOR AN OUTPUT
-	packedOutput, err := PackGetBalanceOutput(output)
+	// TODO how to get the URL?
+	url := "http://127.0.0.1:9650/ext/bc/C/rpc"
+	client, err := ethclient2.Dial(url)
+	if err != nil {
+		return nil, remainingGas, err
+	}
+
+	bal, err := client.BalanceAt(context.Background(), inputStruct, nil)
+	if err != nil {
+		return nil, remainingGas, err
+	}
+
+	packedOutput, err := PackGetBalanceOutput(bal)
 	if err != nil {
 		return nil, remainingGas, err
 	}
@@ -264,15 +289,29 @@ func PackGetCurrentBlockNumberOutput(blockNumber *big.Int) ([]byte, error) {
 }
 
 func getCurrentBlockNumber(accessibleState PrecompileAccessibleState, caller common.Address, addr common.Address, input []byte, suppliedGas uint64, readOnly bool) (ret []byte, remainingGas uint64, err error) {
+	methodAggregate := MulticallABI.Methods["aggregate"]
+	log.Error("aggregate", "methodAggregate.ID", methodAggregate.ID)
+
 	if remainingGas, err = deductGas(suppliedGas, GetCurrentBlockNumberGasCost); err != nil {
 		return nil, 0, err
 	}
-	// no input provided for this function
+	// no input provided for this function 0x252DBA42
 
 	// CUSTOM CODE STARTS HERE
 
-	var output *big.Int // CUSTOM CODE FOR AN OUTPUT
-	output = big.NewInt(1)
+	// TODO how to get the URL port? config?
+	url := "http://127.0.0.1:9650/ext/bc/C/rpc"
+	client, err := ethclient2.Dial(url)
+	if err != nil {
+		return nil, remainingGas, err
+	}
+
+	num, err := client.BlockNumber(context.Background())
+	if err != nil {
+		return nil, remainingGas, err
+	}
+
+	output := big.NewInt(int64(num))
 	packedOutput, err := PackGetCurrentBlockNumberOutput(output)
 	if err != nil {
 		return nil, remainingGas, err

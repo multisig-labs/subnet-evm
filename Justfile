@@ -8,7 +8,8 @@ build:
 	./scripts/build.sh build/ggp_evm.{{SUBNET_EVM_VERSION}}.bin
 
 rebuild: build
-	cp -f build/ggp_evm.{{SUBNET_EVM_VERSION}}.bin ~/.avalanche-cli/bin/avalanchego/avalanchego-v1.9.4/plugins/nYKSQqw15js3YmQxX1Z8aC13jr3EA39V9x1DQpep9yKz9TYPc
+	find ~/.avalanche-cli -name "nYKSQqw15js3YmQxX1Z8aC13jr3EA39V9x1DQpep9yKz9TYPc" -depth -exec rm {} \;
+	cp -f build/ggp_evm.{{SUBNET_EVM_VERSION}}.bin ~/.avalanche-cli/bin/avalanchego/avalanchego-v1.9.5/plugins/nYKSQqw15js3YmQxX1Z8aC13jr3EA39V9x1DQpep9yKz9TYPc
 
 create: build
 	avalanche subnet create ggpevm --force --custom --vm  build/ggp_evm.{{SUBNET_EVM_VERSION}}.bin --genesis ./genesis.json
@@ -25,6 +26,11 @@ start:
 stop:
 	avalanche network stop 
 
+restart: stop rebuild start
+
+run-script file:
+	cd contract-examples && npx hardhat run --network local scripts/{{file}}
+
 test file="./test/ExampleMulticall.ts":
   cd contract-examples && npx hardhat test --network local {{file}}
 
@@ -32,7 +38,7 @@ test-e2e:
 	E2E=true ./scripts/run.sh
 
 ping:
-  cast call --rpc-url http://127.0.0.1:9654/ext/bc/jtd1894n4pQ2Ph3bdR22vWcEiBvbvWf6si67N9GDUr6hmHBTt/rpc 0x0300000000000000000000000000000000000000 `cast calldata "getCurrentBlockNumber()"`
+  cast call 0x0300000000000000000000000000000000000000 `cast sig "getCurrentBlockNumber()"`
   # cast call --rpc-url http://127.0.0.1:9654/ext/bc/jtd1894n4pQ2Ph3bdR22vWcEiBvbvWf6si67N9GDUr6hmHBTt/rpc 0x0200000000000000000000000000000000000001 `cast calldata "mintNativeCoin(address,uint256)"`
 
 
@@ -41,7 +47,8 @@ env:
 
 clean:
 	find ~/.avalanche-cli -name ".DS_Store" -depth -exec rm {} \;
-	rm -f ~/.avalanche-cli/bin/avalanchego/avalanchego-v1.9.4/plugins/nYKSQqw15js3YmQxX1Z8aC13jr3EA39V9x1DQpep9yKz9TYPc
+	find ~/.avalanche-cli -name "nYKSQqw15js3YmQxX1Z8aC13jr3EA39V9x1DQpep9yKz9TYPc" -depth -exec rm {} \;
+	# rm -f ~/.avalanche-cli/bin/avalanchego/avalanchego-v1.9.4/plugins/nYKSQqw15js3YmQxX1Z8aC13jr3EA39V9x1DQpep9yKz9TYPc
 	rm -rf ~/.avalanche-cli/runs
 	rm -rf ~/.avalanche-cli/logs
 	rm -rf ~/.avalanche-cli/snapshots
