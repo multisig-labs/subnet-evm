@@ -28,8 +28,15 @@ stop:
 
 restart: stop rebuild start
 
-run-script file:
-	cd contract-examples && npx hardhat run --network local scripts/{{file}}
+run-script file network="local":
+	cd contract-examples && npx hardhat run --network {{network}} scripts/{{file}}
+
+cast contractName sig *args:
+	#!/usr/bin/env bash
+	cd contract-examples
+	source -- "cache/deployed_addrs_${HARDHAT_NETWORK:-local}.bash"
+	echo cast call ${addrs[{{contractName}}]} "{{sig}}" {{args}}
+	cast call ${addrs[{{contractName}}]} "{{sig}}" {{args}}
 
 test file="./test/ExampleMulticall.ts":
   cd contract-examples && npx hardhat test --network local {{file}}
@@ -41,6 +48,8 @@ ping:
   cast call 0x0300000000000000000000000000000000000000 `cast sig "getCurrentBlockNumber()"`
   # cast call --rpc-url http://127.0.0.1:9654/ext/bc/jtd1894n4pQ2Ph3bdR22vWcEiBvbvWf6si67N9GDUr6hmHBTt/rpc 0x0200000000000000000000000000000000000001 `cast calldata "mintNativeCoin(address,uint256)"`
 
+mc:
+	cast call $MULTICALL `cast calldata "aggregate((address,bytes)[])" $MULTICALL`
 
 env:
 	env | sort

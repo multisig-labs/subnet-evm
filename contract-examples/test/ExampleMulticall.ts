@@ -4,18 +4,25 @@ import { Contract, ContractFactory } from "ethers";
 
 describe("ExampleMulticall", function () {
   let multicallContract: Contract;
-  const tokenAddr = "0x95CA0a568236fC7413Cd2b794A7da24422c2BBb6";
-  const multicallAddr = "0x789a5FDac2b37FCD290fb2924382297A6AE65860";
+  let tokenContract: Contract;
+  // const tokenAddr = "0x5aa01B3b5877255cE50cc55e8986a7a5fe29C70e";
+  // const multicallAddr = "0x52C84043CD9c865236f11d9Fc9F56aa003c1f922";
 
   before(async function () {
-    // Deploy Contract
     const ContractF: ContractFactory = await ethers.getContractFactory(
       "ExampleMulticall"
     );
-    multicallContract = await ContractF.deploy();
+    multicallContract = await ContractF.deploy(
+      "0x0300000000000000000000000000000000000000"
+    );
     await multicallContract.deployed();
     const multicallContractAddress: string = multicallContract.address;
-    console.log(`Contract deployed to: ${multicallContractAddress}`);
+    console.log(`Multicall Contract deployed to: ${multicallContractAddress}`);
+  });
+
+  it("should test", async function () {
+    let result = await multicallContract.callStatic.test();
+    console.log(result);
   });
 
   it("should getCurrentBlockNumber", async function () {

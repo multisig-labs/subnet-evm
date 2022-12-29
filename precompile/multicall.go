@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	ethclient2 "github.com/ava-labs/coreth/ethclient"
+	interfaces2 "github.com/ava-labs/coreth/interfaces"
 	"github.com/ava-labs/subnet-evm/accounts/abi"
 	"github.com/ava-labs/subnet-evm/vmerrs"
 
@@ -180,6 +181,7 @@ func PackAggregateOutput(outputStruct AggregateOutput) ([]byte, error) {
 
 // Multicall 0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00
 func aggregate(accessibleState PrecompileAccessibleState, caller common.Address, addr common.Address, input []byte, suppliedGas uint64, readOnly bool) (ret []byte, remainingGas uint64, err error) {
+	log.Error("aggregate", "input", input)
 	if remainingGas, err = deductGas(suppliedGas, AggregateGasCost); err != nil {
 		return nil, 0, err
 	}
@@ -189,22 +191,30 @@ func aggregate(accessibleState PrecompileAccessibleState, caller common.Address,
 	// attempts to unpack [input] into the arguments to the AggregateInput.
 	// Assumes that [input] does not include selector
 	// You can use unpacked [inputStruct] variable in your code
-	inputStruct, err := UnpackAggregateInput(input)
-	if err != nil {
-		return nil, remainingGas, err
-	}
-
-	// CUSTOM CODE STARTS HERE
-	_ = inputStruct // CUSTOM CODE OPERATES ON INPUT
-
-	// // TODO how to get the URL port? Config?
-	// url := "http://127.0.0.1:9650/ext/bc/C/rpc"
-	// client, err := ethclient2.Dial(url)
+	// inputStruct, err := UnpackAggregateInput(input)
 	// if err != nil {
 	// 	return nil, remainingGas, err
 	// }
-	// cm := interfaces.CallMsg{To: common.HexToAddress("0xA4cD3b0Eb6E5Ab5d8CE4065BcCD70040ADAB1F00"), Data: input}
-	// b, err := client.CallContract(context.Background(), cm, nil)
+
+	// CUSTOM CODE STARTS HERE
+	// _ = inputStruct // CUSTOM CODE OPERATES ON INPUT
+
+	// // TODO how to get the URL port? Config?
+	url := "http://127.0.0.1:9650/ext/bc/C/rpc"
+	client, err := ethclient2.Dial(url)
+	if err != nil {
+		return nil, remainingGas, err
+	}
+	cchainMulticallAddr := common.HexToAddress("0x5aa01B3b5877255cE50cc55e8986a7a5fe29C70e")
+	m := MulticallABI.Methods["aggregate"]
+	callData := append(m.ID, input...)
+	log.Error("aggregate", "callData", callData)
+	cm := interfaces2.CallMsg{To: &cchainMulticallAddr, Data: callData}
+	results, err := client.CallContract(context.Background(), cm, nil)
+	if err != nil {
+		return nil, remainingGas, err
+	}
+	log.Error("aggregate", "results", results)
 
 	// var output AggregateOutput // CUSTOM CODE FOR AN OUTPUT
 	// packedOutput, err := PackAggregateOutput(output)
@@ -214,7 +224,7 @@ func aggregate(accessibleState PrecompileAccessibleState, caller common.Address,
 
 	// Return the packed output and the remaining gas
 	// return packedOutput, remainingGas, nil
-	return input, remainingGas, nil
+	return results, remainingGas, nil
 }
 
 // UnpackGetBalanceInput attempts to unpack [input] into the common.Address type argument

@@ -1,11 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/// @title Multicall - Aggregate results from multiple read-only function calls
-/// @author Michael Elliot <mike@makerdao.com>
-/// @author Joshua Levine <joshua@makerdao.com>
-/// @author Nick Johnson <arachnid@notdot.net>
-
 contract Multicall {
 	struct Call {
 		address target;
@@ -23,32 +18,15 @@ contract Multicall {
 		}
 	}
 
-	// Helper functions
-	function getEthBalance(address addr) public view returns (uint256 balance) {
+	function getBalance(address addr) public view returns (uint256 balance) {
 		balance = addr.balance;
-	}
-
-	function getBlockHash(uint256 blockNumber) public view returns (bytes32 blockHash) {
-		blockHash = blockhash(blockNumber);
-	}
-
-	function getLastBlockHash() public view returns (bytes32 blockHash) {
-		blockHash = blockhash(block.number - 1);
 	}
 
 	function getCurrentBlockTimestamp() public view returns (uint256 timestamp) {
 		timestamp = block.timestamp;
 	}
 
-	function getCurrentBlockDifficulty() public view returns (uint256 difficulty) {
-		difficulty = block.difficulty;
-	}
-
-	function getCurrentBlockGasLimit() public view returns (uint256 gaslimit) {
-		gaslimit = block.gaslimit;
-	}
-
-	function getCurrentBlockCoinBaseConstructor() public view returns (address coinbase) {
-		coinbase = block.coinbase;
+	function getCurrentBlockNumber() public view returns (uint256 blockNumber) {
+		blockNumber = block.number;
 	}
 }
