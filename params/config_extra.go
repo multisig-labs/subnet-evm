@@ -17,15 +17,6 @@ import (
 
 const (
 	maxJSONLen = 64 * 1024 * 1024 // 64MB
-
-	// Consensus Params
-	RollupWindow            uint64 = 10
-	DynamicFeeExtraDataSize        = 80
-
-	// For legacy tests
-	MinGasPrice        int64 = 225_000_000_000
-	TestInitialBaseFee int64 = 225_000_000_000
-	TestMaxBaseFee     int64 = 225_000_000_000
 )
 
 var (

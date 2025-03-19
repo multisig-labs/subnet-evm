@@ -37,13 +37,13 @@ import (
 	"time"
 
 	"github.com/ava-labs/subnet-evm/commontype"
-	"github.com/ava-labs/subnet-evm/consensus/dummy"
 	"github.com/ava-labs/subnet-evm/core"
 	"github.com/ava-labs/subnet-evm/core/state"
 	"github.com/ava-labs/subnet-evm/core/txpool"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/metrics"
 	"github.com/ava-labs/subnet-evm/params"
+	"github.com/ava-labs/subnet-evm/plugin/evm/header"
 	"github.com/ava-labs/subnet-evm/precompile/contracts/feemanager"
 	"github.com/ava-labs/subnet-evm/utils"
 	"github.com/ethereum/go-ethereum/common"
@@ -230,9 +230,6 @@ type LegacyPool struct {
 	signer      types.Signer
 	mu          sync.RWMutex
 
-	// [currentStateLock] is required to allow concurrent access to address nonces
-	// and balances during reorgs and gossip handling.
-	currentStateLock sync.Mutex
 	// closed when the transaction pool is stopped. Any goroutine can listen
 	// to this to be notified if it should shut down.
 	generalShutdownChan chan struct{}
@@ -688,9 +685,6 @@ func (pool *LegacyPool) validateTxBasics(tx *types.Transaction, local bool) erro
 // validateTx checks whether a transaction is valid according to the consensus
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *LegacyPool) validateTx(tx *types.Transaction, local bool) error {
-	pool.currentStateLock.Lock()
-	defer pool.currentStateLock.Unlock()
-
 	opts := &txpool.ValidationOptionsWithState{
 		State: pool.currentState,
 		Rules: pool.chainconfig.Rules(
@@ -1503,9 +1497,7 @@ func (pool *LegacyPool) reset(oldHead, newHead *types.Header) {
 		return
 	}
 	pool.currentHead.Store(newHead)
-	pool.currentStateLock.Lock()
 	pool.currentState = statedb
-	pool.currentStateLock.Unlock()
 	pool.pendingNonces = newNoncer(statedb)
 
 	// when we reset txPool we should explicitly check if fee struct for min base fee has changed
@@ -1529,9 +1521,6 @@ func (pool *LegacyPool) reset(oldHead, newHead *types.Header) {
 // future queue to the set of pending transactions. During this process, all
 // invalidated transactions (low nonce, low balance) are deleted.
 func (pool *LegacyPool) promoteExecutables(accounts []common.Address) []*types.Transaction {
-	pool.currentStateLock.Lock()
-	defer pool.currentStateLock.Unlock()
-
 	// Track the promoted transactions to broadcast them at once
 	var promoted []*types.Transaction
 
@@ -1738,9 +1727,6 @@ func (pool *LegacyPool) truncateQueue() {
 // is always explicitly triggered by SetBaseFee and it would be unnecessary and wasteful
 // to trigger a re-heap is this function
 func (pool *LegacyPool) demoteUnexecutables() {
-	pool.currentStateLock.Lock()
-	defer pool.currentStateLock.Unlock()
-
 	// Iterate over all accounts and demote any non-executable transactions
 	gasLimit := pool.currentHead.Load().GasLimit
 	for addr, list := range pool.pending {
@@ -1832,6 +1818,8 @@ func (pool *LegacyPool) periodicBaseFeeUpdate() {
 	}
 }
 
+// updateBaseFee updates the base fee in the tx pool based on the current head block.
+// should only be called when the chain is in Subnet EVM.
 func (pool *LegacyPool) updateBaseFee() {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
@@ -1843,12 +1831,13 @@ func (pool *LegacyPool) updateBaseFee() {
 }
 
 // assumes lock is already held
+// should only be called when the chain is in Subnet EVM.
 func (pool *LegacyPool) updateBaseFeeAt(head *types.Header) error {
 	feeConfig, _, err := pool.chain.GetFeeConfigAt(head)
 	if err != nil {
 		return err
 	}
-	_, baseFeeEstimate, err := dummy.EstimateNextBaseFee(pool.chainconfig, feeConfig, head, uint64(time.Now().Unix()))
+	baseFeeEstimate, err := header.EstimateNextBaseFee(pool.chainconfig, feeConfig, head, uint64(time.Now().Unix()))
 	if err != nil {
 		return err
 	}
